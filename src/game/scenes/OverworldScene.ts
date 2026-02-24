@@ -125,8 +125,8 @@ export class OverworldScene extends Scene {
         this.game.events.emit('show-dialog', payload);
     }
 
-    update() {
+    update(_time: number, delta: number) {
         if (this.dialogActive || this.transitioning) return;
-        this.player.update();
+        this.player.update(delta);
     }
 }
