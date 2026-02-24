@@ -11,7 +11,7 @@ export interface PlayerConfig {
     blockedExtra?: Set<string>;
 }
 
-const MOVE_DURATION = 140; // ms per tile
+const MOVE_DURATION = 100; // ms per tile
 
 export class Player {
     /** The Graphics object that represents the player body — follow this with the camera */
@@ -36,6 +36,9 @@ export class Player {
     // Virtual D-pad state (set by MobileDPad component via EventBus)
     private dpadDir: Direction | null = null;
     private dpadActionQueued = false;
+
+    /** Direction held during a tween — applied immediately on tween complete */
+    private bufferedDir: Direction | null = null;
 
     constructor({ scene, tileX, tileY, mapData, blockedExtra }: PlayerConfig) {
         this.scene = scene;
@@ -112,6 +115,23 @@ export class Player {
         return WALKABLE_TILES.has(this.mapData[ty][tx]);
     }
 
+    /** Returns the currently held direction from keyboard or D-pad, or null if none. */
+    private getHeldDir(): Direction | null {
+        const { cursors, wasd } = this;
+        if (cursors.down.isDown  || wasd.down.isDown  || this.dpadDir === DIR.DOWN)  return DIR.DOWN;
+        if (cursors.up.isDown    || wasd.up.isDown    || this.dpadDir === DIR.UP)    return DIR.UP;
+        if (cursors.left.isDown  || wasd.left.isDown  || this.dpadDir === DIR.LEFT)  return DIR.LEFT;
+        if (cursors.right.isDown || wasd.right.isDown || this.dpadDir === DIR.RIGHT) return DIR.RIGHT;
+        return null;
+    }
+
+    /** Translate a Direction into a move, ignoring the call if blocked or already moving. */
+    private applyDir(dir: Direction) {
+        const dx = dir === DIR.LEFT ? -1 : dir === DIR.RIGHT ? 1 : 0;
+        const dy = dir === DIR.UP   ? -1 : dir === DIR.DOWN  ? 1 : 0;
+        this.move(dx, dy, dir);
+    }
+
     private move(dx: number, dy: number, dir: Direction) {
         if (this.isMoving) return;
         this.facing = dir;
@@ -132,16 +152,32 @@ export class Player {
             ease: 'Linear',
             onComplete: () => {
                 this.isMoving = false;
+
                 const tile = this.mapData[this.tileY]?.[this.tileX];
                 if (tile === TILE.DOOR) {
                     this.onDoorCb?.(this.tileX, this.tileY);
+                    return;
+                }
+
+                // Start the next move immediately if a direction was buffered
+                // while the tween was running, eliminating the 1-frame dead zone.
+                if (this.bufferedDir !== null) {
+                    const next = this.bufferedDir;
+                    this.bufferedDir = null;
+                    this.applyDir(next);
                 }
             },
         });
     }
 
     update() {
-        if (this.isMoving) return;
+        const heldDir = this.getHeldDir();
+
+        if (this.isMoving) {
+            // Keep the buffer fresh with the currently held direction
+            this.bufferedDir = heldDir;
+            return;
+        }
 
         const interactPressed =
             Phaser.Input.Keyboard.JustDown(this.spaceKey) ||
@@ -150,17 +186,17 @@ export class Player {
 
         if (interactPressed) {
             this.dpadActionQueued = false;
+            this.bufferedDir = null;
             const dx = this.facing === DIR.LEFT ? -1 : this.facing === DIR.RIGHT ? 1 : 0;
             const dy = this.facing === DIR.UP   ? -1 : this.facing === DIR.DOWN  ? 1 : 0;
             this.onInteractCb?.(this.tileX + dx, this.tileY + dy, this.facing);
             return;
         }
 
-        const { cursors, wasd } = this;
-        if      (cursors.down.isDown  || wasd.down.isDown  || this.dpadDir === DIR.DOWN)  this.move(0,  1, DIR.DOWN);
-        else if (cursors.up.isDown    || wasd.up.isDown    || this.dpadDir === DIR.UP)    this.move(0, -1, DIR.UP);
-        else if (cursors.left.isDown  || wasd.left.isDown  || this.dpadDir === DIR.LEFT)  this.move(-1, 0, DIR.LEFT);
-        else if (cursors.right.isDown || wasd.right.isDown || this.dpadDir === DIR.RIGHT) this.move(1,  0, DIR.RIGHT);
+        // Use buffered direction first (already queued), then current held direction
+        const dir = this.bufferedDir ?? heldDir;
+        this.bufferedDir = null;
+        if (dir !== null) this.applyDir(dir);
     }
 
     get gridX()     { return this.tileX; }
