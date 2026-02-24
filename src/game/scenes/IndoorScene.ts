@@ -27,8 +27,6 @@ export abstract class IndoorScene extends Scene {
     protected mapData!: number[][];
     protected dialogActive = false;
     protected transitioning = false;
-    protected worldW = 0;
-    protected worldH = 0;
 
     /** Overworld tile position to return the player to on exit */
     private returnTileX = 17;
@@ -59,9 +57,11 @@ export abstract class IndoorScene extends Scene {
         const tileset = map.addTilesetImage('tileset', 'tileset', TILE_SIZE, TILE_SIZE, 0, 0)!;
         map.createLayer(0, tileset, 0, 0)!.setDepth(0);
 
-        this.worldW = this.mapData[0].length * TILE_SIZE;
-        this.worldH = this.mapData.length * TILE_SIZE;
+        const worldW = this.mapData[0].length * TILE_SIZE;
+        const worldH = this.mapData.length * TILE_SIZE;
 
+        // Camera — no scroll needed for this small room, but bounds prevent overdraw
+        this.cameras.main.setBounds(0, 0, worldW, worldH);
         this.cameras.main.setZoom(CAMERA_ZOOM);
 
         // Player spawns at given position (or just inside the door)
@@ -74,7 +74,8 @@ export abstract class IndoorScene extends Scene {
             mapData: this.mapData,
             blockedExtra: npcBlocked,
         });
-        this.snapCamera();
+        this.cameras.main.startFollow(this.player.body, true);
+        this.cameras.main.setFollowOffset(TILE_SIZE / 2, TILE_SIZE / 2);
 
         // NPCs
         for (const npcData of npcs) this.npcs.push(new NPC(this, npcData));
@@ -151,19 +152,5 @@ export abstract class IndoorScene extends Scene {
     update(_time: number, delta: number) {
         if (this.dialogActive || this.transitioning) return;
         this.player.update(delta);
-        this.snapCamera();
-    }
-
-    /** See OverworldScene.snapCamera — same logic, shared pattern. */
-    protected snapCamera() {
-        const cam = this.cameras.main;
-        const visW = cam.width  / CAMERA_ZOOM;
-        const visH = cam.height / CAMERA_ZOOM;
-        const cx = Math.round(this.player.body.x) + 8;
-        const cy = Math.round(this.player.body.y) + 8;
-        cam.setScroll(
-            Math.max(0, Math.min(cx - visW / 2, this.worldW - visW)),
-            Math.max(0, Math.min(cy - visH / 2, this.worldH - visH)),
-        );
     }
 }
