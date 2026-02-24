@@ -4,6 +4,7 @@ import { EventBus } from './game/EventBus';
 import { ProjectModal } from './components/ProjectModal';
 import { ContactPanel } from './components/ContactPanel';
 import { MobileDPad } from './components/MobileDPad';
+import { MusicToggle } from './components/MusicToggle';
 import type { ProjectData, ContactData } from './game/content/modalData';
 
 const isTouchDevice = () =>
@@ -36,6 +37,7 @@ function App() {
     return (
         <div id="app">
             <PhaserGame ref={phaserRef} />
+            <MusicToggle />
 
             {/* Virtual D-pad shown only on touch/mobile devices */}
             {modal.kind === 'none' && isTouchDevice() && <MobileDPad />}
