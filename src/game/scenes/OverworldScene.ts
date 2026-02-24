@@ -19,6 +19,8 @@ export class OverworldScene extends Scene {
     private mapData!: number[][];
     private dialogActive = false;
     private transitioning = false;
+    private worldW = 0;
+    private worldH = 0;
 
     constructor() {
         super(SCENE.OVERWORLD);
@@ -41,11 +43,9 @@ export class OverworldScene extends Scene {
         const tileset = map.addTilesetImage('tileset', 'tileset', TILE_SIZE, TILE_SIZE, 0, 0)!;
         map.createLayer(0, tileset, 0, 0)!.setDepth(0);
 
-        const worldW = this.mapData[0].length * TILE_SIZE;
-        const worldH = this.mapData.length * TILE_SIZE;
+        this.worldW = this.mapData[0].length * TILE_SIZE;
+        this.worldH = this.mapData.length * TILE_SIZE;
 
-        // Camera setup
-        this.cameras.main.setBounds(0, 0, worldW, worldH);
         this.cameras.main.setZoom(CAMERA_ZOOM);
 
         // Spawn player (block NPC tiles so player can't walk through them)
@@ -60,9 +60,7 @@ export class OverworldScene extends Scene {
             blockedExtra: npcBlocked,
         });
 
-        // Camera follows the player body (Graphics object), offset to center on tile
-        this.cameras.main.startFollow(this.player.body, true);
-        this.cameras.main.setFollowOffset(TILE_SIZE / 2, TILE_SIZE / 2);
+        this.snapCamera();
 
         // Spawn NPCs
         for (const data of OVERWORLD_NPCS) {
@@ -128,5 +126,23 @@ export class OverworldScene extends Scene {
     update(_time: number, delta: number) {
         if (this.dialogActive || this.transitioning) return;
         this.player.update(delta);
+        this.snapCamera();
+    }
+
+    /**
+     * Snap the camera to an integer pixel position exactly centered on the player.
+     * Manual scroll (no startFollow) eliminates sub-pixel jitter between the
+     * player sprite and the background tiles — matches Pokemon's crisp camera feel.
+     */
+    private snapCamera() {
+        const cam = this.cameras.main;
+        const visW = cam.width  / CAMERA_ZOOM;
+        const visH = cam.height / CAMERA_ZOOM;
+        const cx = Math.round(this.player.body.x) + 8;
+        const cy = Math.round(this.player.body.y) + 8;
+        cam.setScroll(
+            Math.max(0, Math.min(cx - visW / 2, this.worldW - visW)),
+            Math.max(0, Math.min(cy - visH / 2, this.worldH - visH)),
+        );
     }
 }
