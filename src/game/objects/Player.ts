@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { TILE_SIZE, WALKABLE_TILES, TILE, DIR, Direction } from '../constants';
+import { EventBus } from '../EventBus';
 
 export interface PlayerConfig {
     scene: Phaser.Scene;
@@ -32,6 +33,10 @@ export class Player {
     private onInteractCb?: (tileX: number, tileY: number, facing: Direction) => void;
     private onDoorCb?: (tileX: number, tileY: number) => void;
 
+    // Virtual D-pad state (set by MobileDPad component via EventBus)
+    private dpadDir: Direction | null = null;
+    private dpadActionQueued = false;
+
     constructor({ scene, tileX, tileY, mapData, blockedExtra }: PlayerConfig) {
         this.scene = scene;
         this.tileX = tileX;
@@ -55,6 +60,18 @@ export class Player {
         };
         this.spaceKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
         this.enterKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+
+        // Listen for virtual D-pad events from the React MobileDPad component
+        EventBus.on('dpad', ({ dir, action }: { dir: Direction; action: 'press' | 'release' }) => {
+            if (action === 'press') {
+                this.dpadDir = dir;
+            } else if (this.dpadDir === dir) {
+                this.dpadDir = null;
+            }
+        });
+        EventBus.on('dpad-action', () => {
+            this.dpadActionQueued = true;
+        });
     }
 
     /** Draw a simple placeholder character in local tile space (0-15, 0-15) */
@@ -126,7 +143,13 @@ export class Player {
     update() {
         if (this.isMoving) return;
 
-        if (Phaser.Input.Keyboard.JustDown(this.spaceKey) || Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+        const interactPressed =
+            Phaser.Input.Keyboard.JustDown(this.spaceKey) ||
+            Phaser.Input.Keyboard.JustDown(this.enterKey) ||
+            this.dpadActionQueued;
+
+        if (interactPressed) {
+            this.dpadActionQueued = false;
             const dx = this.facing === DIR.LEFT ? -1 : this.facing === DIR.RIGHT ? 1 : 0;
             const dy = this.facing === DIR.UP   ? -1 : this.facing === DIR.DOWN  ? 1 : 0;
             this.onInteractCb?.(this.tileX + dx, this.tileY + dy, this.facing);
@@ -134,10 +157,10 @@ export class Player {
         }
 
         const { cursors, wasd } = this;
-        if      (cursors.down.isDown  || wasd.down.isDown)  this.move(0,  1, DIR.DOWN);
-        else if (cursors.up.isDown    || wasd.up.isDown)    this.move(0, -1, DIR.UP);
-        else if (cursors.left.isDown  || wasd.left.isDown)  this.move(-1, 0, DIR.LEFT);
-        else if (cursors.right.isDown || wasd.right.isDown) this.move(1,  0, DIR.RIGHT);
+        if      (cursors.down.isDown  || wasd.down.isDown  || this.dpadDir === DIR.DOWN)  this.move(0,  1, DIR.DOWN);
+        else if (cursors.up.isDown    || wasd.up.isDown    || this.dpadDir === DIR.UP)    this.move(0, -1, DIR.UP);
+        else if (cursors.left.isDown  || wasd.left.isDown  || this.dpadDir === DIR.LEFT)  this.move(-1, 0, DIR.LEFT);
+        else if (cursors.right.isDown || wasd.right.isDown || this.dpadDir === DIR.RIGHT) this.move(1,  0, DIR.RIGHT);
     }
 
     get gridX()     { return this.tileX; }

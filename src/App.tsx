@@ -3,7 +3,11 @@ import { IRefPhaserGame, PhaserGame } from './PhaserGame';
 import { EventBus } from './game/EventBus';
 import { ProjectModal } from './components/ProjectModal';
 import { ContactPanel } from './components/ContactPanel';
+import { MobileDPad } from './components/MobileDPad';
 import type { ProjectData, ContactData } from './game/content/modalData';
+
+const isTouchDevice = () =>
+    typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
 
 type ModalState =
     | { kind: 'none' }
@@ -32,6 +36,9 @@ function App() {
     return (
         <div id="app">
             <PhaserGame ref={phaserRef} />
+
+            {/* Virtual D-pad shown only on touch/mobile devices */}
+            {modal.kind === 'none' && isTouchDevice() && <MobileDPad />}
 
             {modal.kind === 'project' && (
                 <ProjectModal project={modal.data} onClose={closeModal} />
