@@ -86,7 +86,10 @@ export abstract class IndoorScene extends Scene {
         this.player.onInteract((tx, ty) => {
             if (this.dialogActive) return;
             const npc = this.npcs.find(n => n.isAt(tx, ty));
-            if (npc) { this.showDialog(npc.dialog, npc.name); return; }
+            if (npc) {
+                this.handleNPCInteract(npc);
+                return;
+            }
             const sign = this.signs.find(s => s.isAt(tx, ty));
             if (sign) { this.showDialog(sign.lines, sign.label); return; }
         });
@@ -117,12 +120,31 @@ export abstract class IndoorScene extends Scene {
         EventBus.emit('current-scene-ready', this);
     }
 
-    private showDialog(lines: string[], name?: string) {
+    private handleNPCInteract(npc: NPC) {
+        const emitModal = () => {
+            if (npc.modalEvent) {
+                EventBus.emit(npc.modalEvent, npc.modalData);
+            }
+        };
+
+        if (npc.dialog.length > 0) {
+            // Show dialog first, then open modal on completion
+            this.showDialog(npc.dialog, npc.name, emitModal);
+        } else {
+            // No dialog — open modal directly
+            emitModal();
+        }
+    }
+
+    private showDialog(lines: string[], name?: string, onComplete?: () => void) {
         this.dialogActive = true;
         const payload: ShowDialogPayload = {
             lines,
             name,
-            onComplete: () => { this.dialogActive = false; },
+            onComplete: () => {
+                this.dialogActive = false;
+                onComplete?.();
+            },
         };
         this.game.events.emit('show-dialog', payload);
     }

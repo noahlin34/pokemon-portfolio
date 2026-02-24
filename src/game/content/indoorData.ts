@@ -1,5 +1,6 @@
 import { NPCData } from '../objects/NPC';
 import { SignData } from '../objects/Sign';
+import { PROJECTS, CONTACT } from './modalData';
 
 const W = 5; // wall
 const F = 3; // floor (path tile reused as wood floor)
@@ -89,35 +90,39 @@ export const PROJECTS_NPCS: NPCData[] = [
         tileY: 3,
         name: 'Terminal 1',
         color: 0x00bcd4,
-        dialog: [
-            // TODO: Replace with your first project
-            'PROJECT: Portfolio Website',
-            'A Pokemon Fire Red-style',
-            'personal portfolio site.',
-            'Stack: Phaser 3 + React + TS',
-        ],
+        dialog: [],
+        // Opens a rich React modal with project details
+        modalEvent: 'open-project',
+        modalData: PROJECTS[0],
     },
     {
         tileX: 10,
         tileY: 3,
         name: 'Terminal 2',
         color: 0x00bcd4,
-        dialog: [
-            // TODO: Replace with your second project
-            'PROJECT: TODO',
-            'Description coming soon!',
-        ],
+        dialog: [],
+        modalEvent: 'open-project',
+        modalData: PROJECTS[1],
     },
     {
         tileX: 7,
         tileY: 6,
+        name: 'Terminal 3',
+        color: 0x00bcd4,
+        dialog: [],
+        modalEvent: 'open-project',
+        modalData: PROJECTS[2],
+    },
+    {
+        tileX: 7,
+        tileY: 8,
         name: 'Scientist',
         color: 0x4caf50,
         dialog: [
-            'Each terminal holds the details',
-            'of a project I\'ve shipped.',
+            'Each terminal holds a project.',
             'Walk up and press SPACE to',
-            'read more about each one!',
+            'read details, view code, or',
+            'see a live demo!',
         ],
     },
 ];
@@ -189,17 +194,13 @@ export const POKECENTER_NPCS: NPCData[] = [
         tileY: 3,
         name: 'Nurse Joy',
         color: 0xe91e8c,
+        // Brief in-game greeting, then opens the contact modal
         dialog: [
-            'Welcome to the POKÉCENTER!',
-            'I\'ll restore your team',
-            'to full health!',
-            'While you wait, here\'s how',
-            'to get in touch:',
-            // TODO: Replace with your contact info
-            'Email: hello@example.com',
-            'GitHub: github.com/example',
-            'LinkedIn: linkedin.com/in/example',
+            'Welcome! Let me pull up',
+            'the contact details for you.',
         ],
+        modalEvent: 'open-contact',
+        modalData: CONTACT,
     },
 ];
 

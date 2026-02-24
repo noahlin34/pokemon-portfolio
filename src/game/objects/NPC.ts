@@ -4,11 +4,17 @@ import { TILE_SIZE } from '../constants';
 export interface NPCData {
     tileX: number;
     tileY: number;
+    /** In-game dialog lines shown via the Pokemon-style text box. */
     dialog: string[];
     name?: string;
     color?: number;
-    /** If set, emitting this event via EventBus opens a React modal instead of a dialog box */
+    /**
+     * If set, interacting with this NPC emits this event on EventBus (e.g. 'open-project')
+     * and opens a React modal overlay instead of (or after) the dialog box.
+     */
     modalEvent?: string;
+    /** Arbitrary data forwarded to the React modal handler. */
+    modalData?: unknown;
 }
 
 export class NPC {
@@ -17,6 +23,7 @@ export class NPC {
     readonly dialog: string[];
     readonly name: string;
     readonly modalEvent?: string;
+    readonly modalData?: unknown;
 
     private gfx: Phaser.GameObjects.Graphics;
 
@@ -26,6 +33,7 @@ export class NPC {
         this.dialog = data.dialog;
         this.name = data.name ?? 'NPC';
         this.modalEvent = data.modalEvent;
+        this.modalData = data.modalData;
 
         const color = data.color ?? 0x3498db;
         const px = data.tileX * TILE_SIZE;
